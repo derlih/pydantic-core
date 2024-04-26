@@ -445,6 +445,14 @@ pub fn validate_core_schema<'py>(schema: &Bound<'py, PyAny>, strict: Option<bool
     self_validator.validate_schema(schema, strict)
 }
 
+pub struct ValidationCost(usize);
+
+impl Default for ValidationCost {
+    fn default() -> Self {
+        ValidationCost(1)
+    }
+}
+
 pub trait BuildValidator: Sized {
     const EXPECTED_TYPE: &'static str;
 
@@ -455,6 +463,10 @@ pub trait BuildValidator: Sized {
         config: Option<&Bound<'_, PyDict>>,
         definitions: &mut DefinitionsBuilder<CombinedValidator>,
     ) -> PyResult<CombinedValidator>;
+
+    fn cost(&self) -> ValidationCost {
+        ValidationCost::default()
+    }
 }
 
 /// Logic to create a particular validator, called in the `validator_match` macro, then in turn by `build_validator`
