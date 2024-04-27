@@ -445,14 +445,6 @@ pub fn validate_core_schema<'py>(schema: &Bound<'py, PyAny>, strict: Option<bool
     self_validator.validate_schema(schema, strict)
 }
 
-pub struct ValidationCost(usize);
-
-impl Default for ValidationCost {
-    fn default() -> Self {
-        ValidationCost(1)
-    }
-}
-
 pub trait BuildValidator: Sized {
     const EXPECTED_TYPE: &'static str;
 
@@ -463,10 +455,6 @@ pub trait BuildValidator: Sized {
         config: Option<&Bound<'_, PyDict>>,
         definitions: &mut DefinitionsBuilder<CombinedValidator>,
     ) -> PyResult<CombinedValidator>;
-
-    fn cost(&self) -> ValidationCost {
-        ValidationCost::default()
-    }
 }
 
 /// Logic to create a particular validator, called in the `validator_match` macro, then in turn by `build_validator`
@@ -746,6 +734,15 @@ pub enum CombinedValidator {
     JsonOrPython(json_or_python::JsonOrPython),
 }
 
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Clone, Copy)]
+pub struct ValidationCost(usize);
+
+impl Default for ValidationCost {
+    fn default() -> Self {
+        ValidationCost(1)
+    }
+}
+
 /// This trait must be implemented by all validators, it allows various validators to be accessed consistently,
 /// validators defined in `build_validator` also need `EXPECTED_TYPE` as a const, but that can't be part of the trait
 #[enum_dispatch(CombinedValidator)]
@@ -785,4 +782,8 @@ pub trait Validator: Send + Sync + Debug {
     /// `get_name` generally returns `Self::EXPECTED_TYPE` or some other clear identifier of the validator
     /// this is used in the error location in unions, and in the top level message in `ValidationError`
     fn get_name(&self) -> &str;
+
+    fn cost(&self) -> ValidationCost {
+        ValidationCost::default()
+    }
 }
