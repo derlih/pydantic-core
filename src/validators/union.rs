@@ -17,7 +17,8 @@ use crate::tools::SchemaDict;
 use super::custom_error::CustomError;
 use super::literal::LiteralLookup;
 use super::{
-    build_validator, BuildValidator, CombinedValidator, DefinitionsBuilder, Exactness, ValidationState, Validator,
+    build_validator, BuildValidator, CombinedValidator, DefinitionsBuilder, Exactness, ValidationCost, ValidationState,
+    Validator,
 };
 
 #[derive(Debug)]
@@ -45,6 +46,7 @@ pub struct UnionValidator {
     custom_error: Option<CustomError>,
     strict: bool,
     name: String,
+    validation_cost: ValidationCost,
 }
 
 impl BuildValidator for UnionValidator {
@@ -87,12 +89,18 @@ impl BuildValidator for UnionValidator {
                     .collect::<Vec<_>>()
                     .join(",");
 
+                let validation_cost = choices.iter().map(|v| v.0.cost()).max();
+
                 Ok(Self {
                     mode,
                     choices,
                     custom_error: CustomError::build(schema, config, definitions)?,
                     strict: is_strict(schema, config)?,
                     name: format!("{}[{descr}]", Self::EXPECTED_TYPE),
+                    validation_cost: match validation_cost {
+                        Some(cost) => cost,
+                        None => ValidationCost::default(),
+                    },
                 }
                 .into())
             }
@@ -216,6 +224,10 @@ impl Validator for UnionValidator {
 
     fn get_name(&self) -> &str {
         &self.name
+    }
+
+    fn cost(&self) -> ValidationCost {
+        self.validation_cost
     }
 }
 
